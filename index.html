@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E6E9EC">
+<title>Pointage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6E9EC; --panel:#F6F7F8; --ink:#1C2630; --muted:#5D6B78; --line:#C9D0D6;
+  --amber:#E3A008; --amber-ink:#2A1E00; --steel:#2F5D7C; --steel-soft:#D7E3EC;
+  --ok:#2E7D5B; --warn:#B4441F;
+  --vac:#2E8C86; --demi:#6FA8A3; --rtt:#6B5BA8; --ferie:#8A6D3B; --mal:#B4441F;
+  --font-num:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --font:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151B21; --panel:#1E262E; --ink:#E8EDF1; --muted:#93A1AD; --line:#33404B;
+    --amber:#F0B429; --amber-ink:#231800; --steel:#7FB3D5; --steel-soft:#24394A;
+    --ok:#5DBB8E; --warn:#E97955;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151B21; --panel:#1E262E; --ink:#E8EDF1; --muted:#93A1AD; --line:#33404B;
+  --amber:#F0B429; --amber-ink:#231800; --steel:#7FB3D5; --steel-soft:#24394A;
+  --ok:#5DBB8E; --warn:#E97955;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--steel);outline-offset:2px}
+main{max-width:560px;margin:0 auto;padding:12px 16px 110px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+
+/* Barre d'onglets */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav.tabs .in{display:flex;max-width:560px;width:100%}
+nav.tabs button{flex:1;background:none;border:0;padding:12px 4px 14px;color:var(--muted);font-weight:600;font-size:15px;border-top:3px solid transparent}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--amber)}
+
+/* Aujourd'hui : le cadran de la pointeuse */
+.head{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 10px}
+.head h1{font-family:var(--font-num);font-weight:600;font-size:22px;margin:0;text-transform:capitalize}
+.head .clock{font-family:var(--font-num);font-size:22px;color:var(--muted)}
+.dial{background:var(--ink);color:var(--bg);border-radius:6px;padding:18px 18px 16px;position:relative;overflow:hidden}
+.dial::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:repeating-linear-gradient(-45deg,var(--amber) 0 12px,var(--ink) 12px 24px)}
+.dial .state{font-size:15px;opacity:.8}
+.dial .big{font-family:var(--font-num);font-weight:700;font-size:84px;line-height:.95;letter-spacing:-1px;margin:4px 0 6px}
+.dial .big small{font-size:34px;font-weight:600;opacity:.7;margin-left:4px}
+.dial .row{display:flex;gap:18px;flex-wrap:wrap;font-size:15px;padding-bottom:8px}
+.dial .row b{font-family:var(--font-num);font-size:20px;font-weight:600}
+.bar{height:6px;background:rgba(127,127,127,.35);border-radius:3px;margin:6px 0 12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--amber);width:0}
+
+.primary{display:block;width:100%;margin:14px 0 8px;padding:20px;border:0;border-radius:6px;background:var(--amber);color:var(--amber-ink);font-family:var(--font-num);font-weight:700;font-size:28px;letter-spacing:.3px;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.primary:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.primary[disabled]{background:var(--line);color:var(--muted);box-shadow:none}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.steps button{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 2px;font-size:13px;font-weight:600;color:var(--muted)}
+.steps button .t{display:block;font-family:var(--font-num);font-size:19px;color:var(--ink)}
+.steps button.done{border-color:var(--ink)}
+
+section.block{margin-top:22px}
+section.block h2{font-size:16px;font-weight:600;margin:0 0 8px;color:var(--muted)}
+.garde{display:flex;align-items:center;gap:12px;background:var(--steel-soft);border-left:5px solid var(--steel);border-radius:6px;padding:12px}
+.garde .info{flex:1}
+.garde .info b{font-family:var(--font-num);font-size:26px;display:block;line-height:1.1}
+.gbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.gbtns button{border:2px solid var(--steel);border-radius:6px;background:var(--steel);color:#fff;padding:14px 8px;font-weight:600;font-size:16px}
+.gbtns button.call{background:transparent;color:var(--ink)}
+.garde .info .note{display:block}
+:root[data-theme="dark"] .gbtns button:not(.call){color:#10202c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .gbtns button:not(.call){color:#10202c}}
+.chips{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.chip{border:2px solid var(--c);background:transparent;color:var(--ink);border-radius:6px;padding:10px 1px;font-weight:600;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--c);color:#fff}
+.note{font-size:14px;color:var(--muted);margin:8px 0 0}
+
+/* Mois */
+.monthbar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px}
+.monthbar h1{font-family:var(--font-num);font-size:26px;margin:0;text-transform:capitalize}
+.monthbar button{background:var(--panel);border:1px solid var(--line);border-radius:6px;width:44px;height:40px;font-size:20px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .dow{font-size:12px;color:var(--muted);text-align:center;padding-bottom:2px}
+.cal .d{background:var(--panel);border:1px solid var(--line);border-radius:4px;min-height:58px;padding:3px 4px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+.cal .d .n{font-size:12px;color:var(--muted)}
+.cal .d .h{font-family:var(--font-num);font-size:17px;font-weight:600}
+.cal .d.out{opacity:.35}
+.cal .d.we{background:transparent}
+.cal .d.today{border:2px solid var(--amber)}
+.cal .d .tag{font-size:11px;font-weight:600;color:#fff;background:var(--c);border-radius:3px;padding:0 3px;align-self:flex-start}
+.cal .d .g{position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--steel)}
+.cal .d .h.plus{color:var(--ok)} .cal .d .h.minus{color:var(--warn)}
+.cal .d .flag{position:absolute;bottom:3px;right:4px;font-size:11px;color:var(--warn);font-weight:700}
+.mtot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.mtot div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--muted)}
+.mtot b{display:block;font-family:var(--font-num);font-size:24px;color:var(--ink)}
+
+/* Bilan */
+.solde{padding:6px 0 4px}
+.solde .big{font-family:var(--font-num);font-weight:700;font-size:72px;line-height:1}
+.solde p{margin:4px 0 0;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:right;padding:7px 6px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.num{font-size:18px}
+.plus{color:var(--ok)} .minus{color:var(--warn)}
+.tablewrap{overflow-x:auto}
+
+/* Données */
+.field{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.field input{width:110px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);text-align:right}
+.btn{display:block;width:100%;text-align:left;padding:13px 14px;margin:8px 0;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-weight:600}
+.btn small{display:block;font-weight:400;color:var(--muted);font-size:14px}
+.btn.danger{color:var(--warn)}
+textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.row2{display:flex;gap:8px}
+.field input.wide{width:62%;text-align:left}
+.syncline{font-size:14px;color:var(--muted);margin:10px 0 0}
+.syncline.err{color:var(--warn)}
+.row2 .btn{text-align:center}
+
+/* Feuille de détail d'un jour */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.sheet.open{display:flex}
+.sheet .box{background:var(--bg);width:100%;max-width:560px;max-height:88%;overflow:auto;border-radius:12px 12px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.sheet h3{font-family:var(--font-num);font-size:24px;margin:0 0 4px;text-transform:capitalize}
+.ev{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ev span{flex:1;font-weight:500}
+.ev input{width:112px;padding:7px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.ev button{border:0;background:none;color:var(--warn);font-size:22px;width:36px}
+.add{display:flex;gap:6px;margin:10px 0}
+.add select,.add input{flex:1;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);min-width:0}
+.add button{border:0;border-radius:6px;background:var(--ink);color:var(--bg);padding:0 14px;font-weight:600}
+
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-weight:500;opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:90%;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <!-- AUJOURD'HUI -->
+  <div id="v-today">
+    <div class="head"><h1 id="t-date"></h1><span class="clock" id="t-clock"></span></div>
+    <div class="dial">
+      <div class="state" id="t-state"></div>
+      <div class="big" id="t-big">0<small>h</small>00</div>
+      <div class="bar"><i id="t-bar"></i></div>
+      <div class="row" id="t-row"></div>
+    </div>
+    <button class="primary" id="t-primary"></button>
+    <div class="steps" id="t-steps"></div>
+    <p class="syncline" id="t-sync"></p>
+
+    <section class="block">
+      <h2>Garde</h2>
+      <div class="garde">
+        <div class="info"><span id="g-head" class="note" style="margin:0"></span><b id="g-time"></b><span id="g-sub" class="note" style="margin:0"></span></div>
+      </div>
+      <div class="gbtns">
+        <button class="call" id="g-call">Appel reçu</button>
+        <button id="g-btn">Démarrer la garde</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Déclarer aujourd'hui</h2>
+      <div class="chips" id="t-chips"></div>
+      <p class="note" id="t-chipnote"></p>
+    </section>
+  </div>
+
+  <!-- MOIS -->
+  <div id="v-month" class="hidden">
+    <div class="monthbar">
+      <button id="m-prev" aria-label="Mois précédent">‹</button>
+      <h1 id="m-title"></h1>
+      <button id="m-next" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="cal" id="m-cal"></div>
+    <div class="mtot" id="m-tot"></div>
+    <p class="note">Touchez un jour pour voir ou corriger ses pointages.</p>
+  </div>
+
+  <!-- BILAN -->
+  <div id="v-stats" class="hidden">
+    <div class="solde">
+      <div class="big num" id="s-solde"></div>
+      <p id="s-sub"></p>
+    </div>
+    <section class="block">
+      <h2>Par semaine</h2>
+      <div class="tablewrap"><table id="s-weeks"></table></div>
+    </section>
+    <section class="block">
+      <h2>Gardes entre deux journées de travail</h2>
+      <div class="tablewrap"><table id="s-periods"></table></div>
+    </section>
+    <section class="block">
+      <h2>Absences et gardes, par année</h2>
+      <div class="tablewrap"><table id="s-abs"></table></div>
+    </section>
+    <section class="block" id="s-missing-wrap">
+      <h2>Jours ouvrés sans pointage ni statut</h2>
+      <p class="note" id="s-missing"></p>
+    </section>
+  </div>
+
+  <!-- DONNÉES -->
+  <div id="v-data" class="hidden">
+    <section class="block" style="margin-top:6px">
+      <h2>Réglages</h2>
+      <div class="field"><label for="set-target">Heures par jour</label><input id="set-target" type="time" step="60"></div>
+      <div class="field"><label for="set-abs">Valeur d'un jour d'absence (base 38h)</label><input id="set-abs" type="time" step="60"></div>
+      <div class="field"><label for="set-pause">Pause par défaut si non pointée (min)</label><input id="set-pause" type="number" min="0" max="120"></div>
+      <div class="field"><label for="set-theme">Thème</label>
+        <select id="set-theme" style="padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel)"><option value="">Système</option><option value="light">Clair</option><option value="dark">Sombre</option></select></div>
+    </section>
+
+    <section class="block">
+      <h2>Synchro GitHub</h2>
+      <p class="note" style="margin-top:0">Envoi automatique à chaque fin de journée, vers un fichier de votre dépôt privé.</p>
+      <div class="field"><label for="gh-owner">Compte</label><input class="wide" id="gh-owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="votre-pseudo"></div>
+      <div class="field"><label for="gh-repo">Dépôt</label><input class="wide" id="gh-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="pointage-data"></div>
+      <div class="field"><label for="gh-path">Fichier</label><input class="wide" id="gh-path" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field"><label for="gh-branch">Branche</label><input class="wide" id="gh-branch" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field"><label for="gh-token">Token</label><input class="wide" id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+      <p class="syncline" id="gh-state"></p>
+      <div class="row2">
+        <button class="btn" id="gh-now" style="text-align:center">Synchroniser maintenant</button>
+        <button class="btn danger" id="gh-forget" style="text-align:center">Oublier le token</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Reprendre l'Excel actuel</h2>
+      <button class="btn" id="d-seed">Charger les données de l'Excel<small>137 pointages du 13/08 au 07/10/2026, repris de RawData. Les doublons sont ignorés.</small></button>
+    </section>
+
+    <section class="block">
+      <h2>Importer</h2>
+      <p class="note" style="margin-top:0">Collez les colonnes Date, Heure, Action copiées depuis RawData, un export de cette app, ou une sauvegarde complète.</p>
+      <textarea id="d-in" placeholder="13/08/2026	08:00:00	START_DAY"></textarea>
+      <div class="row2">
+        <button class="btn" id="d-import">Importer le texte</button>
+        <label class="btn" style="text-align:center">Choisir un fichier<input id="d-file" type="file" accept=".txt,.csv,.tsv,.json" class="hidden"></label>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Exporter</h2>
+      <div class="row2">
+        <button class="btn" id="d-exp-tsv">Pour Excel</button>
+        <button class="btn" id="d-exp-json">Sauvegarde complète</button>
+      </div>
+      <textarea id="d-out" readonly class="hidden"></textarea>
+      <button class="btn hidden" id="d-copy" style="text-align:center">Copier</button>
+    </section>
+
+    <section class="block">
+      <h2>Stockage</h2>
+      <p class="note" id="d-info" style="margin-top:0"></p>
+      <button class="btn danger" id="d-wipe">Tout effacer sur ce téléphone</button>
+    </section>
+  </div>
+</main>
+
+<nav class="tabs" role="tablist"><div class="in">
+  <button role="tab" data-v="today" aria-selected="true">Aujourd'hui</button>
+  <button role="tab" data-v="month">Mois</button>
+  <button role="tab" data-v="stats">Bilan</button>
+  <button role="tab" data-v="data">Données</button>
+</div></nav>
+
+<div class="sheet" id="sheet"><div class="box" id="sheet-box"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const SEED = [["2026-08-13T08:00:00","START_DAY"],["2026-08-13T12:11:33","START_EAT"],["2026-08-13T12:33:59","STOP_EAT"],["2026-08-13T16:16:33","STOP_DAY"],["2026-08-14T07:39:44","START_DAY"],["2026-08-14T12:25:06","START_EAT"],["2026-08-14T13:01:09","STOP_EAT"],["2026-08-14T16:50:05","STOP_DAY"],["2026-08-17T07:36:14","START_DAY"],["2026-08-17T12:00:00","START_EAT"],["2026-08-17T12:30:00","STOP_EAT"],["2026-08-17T16:10:33","STOP_DAY"],["2026-08-18T07:52:05","START_DAY"],["2026-08-18T12:08:38","START_EAT"],["2026-08-18T12:38:38","STOP_EAT"],["2026-08-18T16:33:15","STOP_DAY"],["2026-08-19T07:40:08","START_DAY"],["2026-08-19T12:02:37","START_EAT"],["2026-08-19T12:39:26","STOP_EAT"],["2026-08-19T17:04:25","STOP_DAY"],["2026-08-20T07:41:53","START_DAY"],["2026-08-20T12:05:50","START_EAT"],["2026-08-20T12:25:50","STOP_EAT"],["2026-08-20T16:43:08","STOP_DAY"],["2026-08-21T07:40:35","START_DAY"],["2026-08-21T12:05:20","START_EAT"],["2026-08-21T12:42:13","STOP_EAT"],["2026-08-21T16:10:59","STOP_DAY"],["2026-08-24T07:46:05","START_DAY"],["2026-08-24T11:59:23","START_EAT"],["2026-08-24T12:32:23","STOP_EAT"],["2026-08-24T16:30:16","STOP_DAY"],["2026-08-25T07:33:12","START_DAY"],["2026-08-25T12:25:31","START_EAT"],["2026-08-25T12:49:26","STOP_EAT"],["2026-08-25T16:22:50","STOP_DAY"],["2026-08-27T07:34:55","START_DAY"],["2026-08-27T12:03:17","START_EAT"],["2026-08-27T12:25:31","STOP_EAT"],["2026-08-27T17:02:45","STOP_DAY"],["2026-08-28T07:31:56","START_DAY"],["2026-08-28T12:27:35","START_EAT"],["2026-08-28T12:51:35","STOP_EAT"],["2026-08-28T16:01:13","STOP_DAY"],["2026-08-31T07:48:47","START_DAY"],["2026-08-31T12:15:05","START_EAT"],["2026-08-31T12:38:37","STOP_EAT"],["2026-08-31T16:52:24","STOP_DAY"],["2026-09-01T07:25:13","START_DAY"],["2026-09-01T12:00:00","START_EAT"],["2026-09-01T13:00:00","STOP_EAT"],["2026-09-01T18:51:14","STOP_DAY"],["2026-09-02T08:14:36","START_DAY"],["2026-09-02T12:33:38","START_EAT"],["2026-09-02T12:55:57","STOP_EAT"],["2026-09-02T16:06:31","STOP_DAY"],["2026-09-03T07:47:30","START_DAY"],["2026-09-03T12:06:36","START_EAT"],["2026-09-03T12:32:43","STOP_EAT"],["2026-09-03T16:27:25","STOP_DAY"],["2026-09-04T07:35:52","START_DAY"],["2026-09-04T13:12:37","START_EAT"],["2026-09-04T13:40:28","STOP_EAT"],["2026-09-04T15:23:24","STOP_DAY"],["2026-09-07T07:36:20","START_DAY"],["2026-09-07T12:10:46","START_EAT"],["2026-09-07T12:36:46","STOP_EAT"],["2026-09-07T16:39:16","STOP_DAY"],["2026-09-08T07:37:44","START_DAY"],["2026-09-08T12:03:28","START_EAT"],["2026-09-08T12:33:27","STOP_EAT"],["2026-09-08T16:18:40","STOP_DAY"],["2026-09-09T07:34:22","START_DAY"],["2026-09-09T12:01:56","START_EAT"],["2026-09-09T12:29:56","STOP_EAT"],["2026-09-09T16:15:33","STOP_DAY"],["2026-09-10T07:30:31","START_DAY"],["2026-09-10T12:23:36","START_EAT"],["2026-09-10T12:53:04","STOP_EAT"],["2026-09-10T16:18:47","STOP_DAY"],["2026-09-11T07:29:20","START_DAY"],["2026-09-11T12:20:15","START_EAT"],["2026-09-11T12:50:16","STOP_EAT"],["2026-09-11T15:48:27","STOP_DAY"],["2026-09-14T07:35:09","START_DAY"],["2026-09-14T12:11:16","START_EAT"],["2026-09-14T12:41:16","STOP_EAT"],["2026-09-14T16:13:00","STOP_DAY"],["2026-09-15T07:36:28","START_DAY"],["2026-09-15T12:23:43","START_EAT"],["2026-09-15T12:38:43","STOP_EAT"],["2026-09-15T16:46:47","STOP_DAY"],["2026-09-16T07:25:28","START_DAY"],["2026-09-16T12:04:13","START_EAT"],["2026-09-16T12:24:43","STOP_EAT"],["2026-09-16T17:15:07","STOP_DAY"],["2026-09-21T07:28:15","START_DAY"],["2026-09-21T12:20:00","START_EAT"],["2026-09-21T12:40:00","STOP_EAT"],["2026-09-21T16:36:31","STOP_DAY"],["2026-09-22T07:39:07","START_DAY"],["2026-09-22T12:00:00","START_EAT"],["2026-09-22T12:30:00","STOP_EAT"],["2026-09-22T17:32:58","STOP_DAY"],["2026-09-23T07:35:00","START_DAY"],["2026-09-23T12:06:09","START_EAT"],["2026-09-23T12:36:09","STOP_EAT"],["2026-09-23T16:36:13","STOP_DAY"],["2026-09-24T07:31:04","START_DAY"],["2026-09-24T12:36:26","START_EAT"],["2026-09-24T13:02:15","STOP_EAT"],["2026-09-24T14:55:02","STOP_DAY"],["2026-09-25T07:33:32","START_DAY"],["2026-09-25T12:17:37","START_EAT"],["2026-09-25T12:47:38","STOP_EAT"],["2026-09-25T16:23:42","STOP_DAY"],["2026-09-28T07:31:38","START_DAY"],["2026-09-28T12:02:11","START_EAT"],["2026-09-28T12:36:14","STOP_EAT"],["2026-09-28T16:19:09","STOP_DAY"],["2026-09-29T07:38:33","START_DAY"],["2026-09-29T12:17:40","START_EAT"],["2026-09-29T12:45:49","STOP_EAT"],["2026-09-29T16:38:22","STOP_DAY"],["2026-09-30T07:23:23","START_DAY"],["2026-09-30T12:23:42","START_EAT"],["2026-09-30T12:47:52","STOP_EAT"],["2026-09-30T16:16:44","STOP_DAY"],["2026-10-01T07:35:25","START_DAY"],["2026-10-01T12:12:26","START_EAT"],["2026-10-01T12:47:00","STOP_EAT"],["2026-10-01T16:13:24","STOP_DAY"],["2026-10-02T07:32:41","START_DAY"],["2026-10-02T12:00:16","START_EAT"],["2026-10-02T12:31:49","STOP_EAT"],["2026-10-02T15:54:20","STOP_DAY"],["2026-10-07T07:41:14","START_DAY"]];
+const KEY = "pointage.v1";
+const DAY_T = ["START_DAY","START_EAT","STOP_EAT","STOP_DAY"];
+const GARDE_T = ["START_GARDE","STOP_GARDE"];
+const ALL_T = DAY_T.concat(GARDE_T, ["APPEL"]);
+const LABEL = {START_DAY:"Début de journée",START_EAT:"Début de pause",STOP_EAT:"Fin de pause",STOP_DAY:"Fin de journée",START_GARDE:"Début de garde",STOP_GARDE:"Fin de garde",APPEL:"Appel reçu"};
+const STATUS = {VAC:{l:"Vacances",c:"var(--vac)"},DEMI:{l:"½ congé",c:"var(--demi)"},RTT:{l:"RTT",c:"var(--rtt)"},FERIE:{l:"Férié",c:"var(--ferie)"},MAL:{l:"Maladie",c:"var(--mal)"}};
+
+/* ---------- stockage ---------- */
+let db = {v:1, events:[], statuses:{}, statusMeta:{}, deleted:{}, settings:{target:480, pause:30, absence:456, theme:""}};
+function load(){
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const o = JSON.parse(raw); if(o && Array.isArray(o.events)){ db.events=o.events; db.statuses=o.statuses||{}; db.statusMeta=o.statusMeta||{}; db.deleted=o.deleted||{}; db.settings=Object.assign(db.settings,o.settings||{}); } } }
+  catch(e){ toast("Lecture du stockage impossible : les données ne seront pas conservées."); }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch(e){ toast("Enregistrement impossible sur ce navigateur."); }
+}
+
+/* ---------- dates ---------- */
+const pad = n => String(n).padStart(2,"0");
+const dkey = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const tsOf = d => dkey(d)+"T"+pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());
+const parseTs = s => { const [a,b] = s.split("T"); const [y,m,d]=a.split("-").map(Number); const [h,mi,se]=(b||"0:0:0").split(":").map(Number); return new Date(y,m-1,d,h,mi,se||0); };
+const keyToDate = k => { const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d); };
+const isWeekend = d => d.getDay()===0 || d.getDay()===6;
+const sec = s => { const t=parseTs(s); return t.getHours()*3600+t.getMinutes()*60+t.getSeconds(); };
+function fmtDur(s, sign){ const neg = s<0; s=Math.round(Math.abs(s)/60); const h=Math.floor(s/60), m=s%60; return (neg?"−":(sign?"+":""))+h+"h"+pad(m); }
+const fmtT = s => s ? s.slice(11,16) : "—";
+const fmtClock = secs => { secs=((secs%86400)+86400)%86400; return pad(Math.floor(secs/3600))+":"+pad(Math.floor(secs/60)%60); };
+function isoWeek(d){ const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); const y=t.getUTCFullYear(); const w=Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7); return {y,w}; }
+const MOIS = new Intl.DateTimeFormat("fr-BE",{month:"long",year:"numeric"});
+const JOUR = new Intl.DateTimeFormat("fr-BE",{weekday:"long",day:"numeric",month:"long"});
+
+/* ---------- calculs ---------- */
+function eventsOn(k){ return db.events.filter(e=>e.ts.startsWith(k) && DAY_T.includes(e.type)).sort((a,b)=>a.ts<b.ts?-1:1); }
+function dayInfo(k, now){
+  const evs = eventsOn(k), f = t => evs.find(e=>e.type===t), l = t => [...evs].reverse().find(e=>e.type===t);
+  const sd=f("START_DAY"), se=f("START_EAT"), ee=f("STOP_EAT"), st=l("STOP_DAY");
+  const d = keyToDate(k), today = k===dkey(now), nowS = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+  const info = {k, sd, se, ee, st, status:db.statuses[k]||null, worked:null, flags:[], live:false, onBreak:false, expEnd:null};
+  info.goal = db.settings.target*60 - (info.status==="DEMI" ? db.settings.absence*30 : 0);
+  if(!sd){ if(evs.length) info.flags.push("début manquant"); return info; }
+  const start = sec(sd.ts);
+  let end = st ? sec(st.ts) : (today ? nowS : null);
+  if(end===null){ info.flags.push("journée non clôturée"); return info; }
+  info.live = today && !st;
+  let pause = 0;
+  const defP = (isWeekend(d) || info.status==="DEMI") ? 0 : db.settings.pause*60;
+  if(se && ee) pause = Math.max(0, sec(ee.ts)-sec(se.ts));
+  else if(se && !ee){
+    if(info.live){ info.onBreak = true; pause = Math.max(0,end-sec(se.ts)); }
+    else { pause = defP; info.flags.push("fin de pause manquante"); }
+  } else if(!info.live && defP){ pause = defP; info.flags.push("pause par défaut"); }
+  info.worked = Math.max(0, end-start-pause);
+  if(info.live){
+    const p = (se&&ee) ? sec(ee.ts)-sec(se.ts) : (se ? Math.max(defP, nowS-sec(se.ts)) : defP);
+    info.expEnd = start + info.goal + p;
+  }
+  return info;
+}
+function gardes(now){
+  const g = db.events.filter(e=>GARDE_T.includes(e.type)).sort((a,b)=>a.ts<b.ts?-1:1);
+  const out=[]; let open=null;
+  for(const e of g){
+    if(e.type==="START_GARDE"){ if(!open) open=e; }
+    else if(open){ out.push({start:open.ts, end:e.ts, dur:(parseTs(e.ts)-parseTs(open.ts))/1000}); open=null; }
+  }
+  if(open) out.push({start:open.ts, end:null, dur:(now-parseTs(open.ts))/1000, open:true});
+  return out;
+}
+const SHORT = new Intl.DateTimeFormat("fr-BE",{weekday:"short",day:"2-digit",month:"2-digit"});
+const fmtWhen = ts => SHORT.format(parseTs(ts))+" "+ts.slice(11,16);
+/* Une période de garde va d'une fin de journée au début de journée suivant.
+   Appels et interventions y sont rattachés selon leur heure de début. */
+function periods(now){
+  const ends = db.events.filter(e=>e.type==="STOP_DAY").map(e=>e.ts).sort();
+  const starts = db.events.filter(e=>e.type==="START_DAY").map(e=>e.ts).sort();
+  const map = new Map();
+  const get = from => { if(!map.has(from)){ const to = from ? (starts.find(s=>s>from)||null) : (starts[0]||null);
+    map.set(from, {from, to, calls:0, dur:0, n:0, open:false}); } return map.get(from); };
+  const owner = ts => { let f=""; for(const e of ends){ if(e<=ts) f=e; else break; } return f; };
+  for(const e of db.events) if(e.type==="APPEL") get(owner(e.ts)).calls++;
+  for(const g of gardes(now)){ const p=get(owner(g.start)); p.dur+=g.dur; p.n++; if(g.open) p.open=true; }
+  return {list:[...map.values()].sort((a,b)=>a.from<b.from?-1:1), lastEnd: ends[ends.length-1]||null, get};
+}
+/* Écart d'un jour par rapport à l'objectif (8h) :
+   - jour travaillé : prestées − 8h
+   - absence complète : 7h36 (base 38h) − 8h
+   - ½ congé : prestées + 3h48 − 8h
+   Jours futurs et journée en cours : pas encore comptés. */
+const FULL = ["VAC","RTT","FERIE","MAL"];
+function dayDiff(i){
+  const T = db.settings.target*60, A = db.settings.absence*60, d = keyToDate(i.k), today = dkey(new Date());
+  if(i.k > today) return null;
+  if(FULL.includes(i.status)) return isWeekend(d) ? null : A-T;
+  if(i.live) return null;
+  if(i.status==="DEMI"){ if(isWeekend(d) || (i.k===today && !i.st)) return null; return (i.worked||0) + A/2 - T; }
+  return i.worked!=null ? i.worked-T : null;
+}
+function dayKeys(){ return [...new Set([...db.events.filter(e=>DAY_T.includes(e.type)).map(e=>e.ts.slice(0,10)), ...Object.keys(db.statuses)])].sort(); }
+function scoredDays(now){ return dayKeys().map(k=>dayInfo(k,now)).map(i=>({i, diff:dayDiff(i)})).filter(x=>x.diff!=null); }
+function allDays(now){
+  const keys = new Set(db.events.filter(e=>DAY_T.includes(e.type)).map(e=>e.ts.slice(0,10)));
+  return [...keys].sort().map(k=>dayInfo(k,now));
+}
+
+/* ---------- actions ---------- */
+function addEvent(type, ts){
+  db.events.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), ts, type});
+  save();
+}
+function punch(type){
+  const now = new Date(), k = dkey(now), evs = eventsOn(k), has = t => evs.some(e=>e.type===t);
+  if(has(type)){ toast(LABEL[type]+" déjà pointé. Corrigez-le dans l'onglet Mois."); return; }
+  if(has("STOP_DAY")){ toast("La journée est déjà terminée."); return; }
+  if(type!=="START_DAY" && !has("START_DAY")){ toast("Commencez d'abord la journée."); return; }
+  if(type==="STOP_EAT" && !has("START_EAT")){ toast("Aucune pause en cours."); return; }
+  if(type==="STOP_DAY" && has("START_EAT") && !has("STOP_EAT")){ addEvent("STOP_EAT", tsOf(now)); }
+  if(db.statuses[k] && db.statuses[k]!=="DEMI" && type==="START_DAY"){ delete db.statuses[k]; db.statusMeta[k]=Date.now(); }
+  addEvent(type, tsOf(now));
+  toast(LABEL[type]+" pointé à "+tsOf(now).slice(11,16)+".");
+  render();
+  if(type==="STOP_DAY") ghSync(false);
+}
+function toggleGarde(){
+  const now = new Date(), open = gardes(now).find(g=>g.open);
+  addEvent(open ? "STOP_GARDE" : "START_GARDE", tsOf(now));
+  toast(open ? "Garde terminée : "+fmtDur(open.dur)+"." : "Garde démarrée à "+tsOf(now).slice(11,16)+".");
+  render();
+}
+function logCall(){
+  const now = new Date(); addEvent("APPEL", tsOf(now));
+  toast("Appel enregistré à "+tsOf(now).slice(11,16)+"."); render();
+}
+function setStatus(k, code){
+  if(db.statuses[k]===code){ delete db.statuses[k]; db.statusMeta[k]=Date.now(); save(); render(); toast(STATUS[code].l+" retiré."); return; }
+  if(code!=="DEMI" && eventsOn(k).length && !confirm("Ce jour a déjà des pointages. Le déclarer quand même en "+STATUS[code].l+" ? Les pointages sont conservés.")) return;
+  db.statuses[k]=code; db.statusMeta[k]=Date.now(); save(); render(); toast(STATUS[code].l+" enregistré.");
+}
+
+/* ---------- rendu : aujourd'hui ---------- */
+function renderToday(){
+  const now = new Date(), k = dkey(now), i = dayInfo(k, now);
+  document.getElementById("t-date").textContent = JOUR.format(now);
+  document.getElementById("t-clock").textContent = pad(now.getHours())+":"+pad(now.getMinutes());
+  const T = i.goal, w = i.worked||0;
+  const big = document.getElementById("t-big");
+  const h=Math.floor(w/3600), m=Math.floor(w/60)%60;
+  big.innerHTML = h+"<small>h</small>"+pad(m);
+  document.getElementById("t-bar").style.width = Math.min(100, w/T*100)+"%";
+  let state, row=[];
+  if(i.status && !i.sd){ state = STATUS[i.status].l+" aujourd'hui"; }
+  else if(!i.sd){ state = "Journée pas commencée"; }
+  else if(i.st){ state = "Journée terminée"; row.push(["Écart", fmtDur(w-T,true)]); }
+  else if(i.onBreak){ state = "En pause depuis "+fmtT(i.se.ts); }
+  else { state = "Au travail depuis "+fmtT(i.sd.ts); }
+  if(i.live && i.expEnd!=null) row.push(["Fin prévue", fmtClock(i.expEnd)]);
+  if(i.live) row.push(["Reste", w>=T ? "0h00" : fmtDur(T-w)]);
+  document.getElementById("t-state").textContent = state;
+  document.getElementById("t-row").innerHTML = row.map(r=>`<span>${r[0]} <b>${r[1]}</b></span>`).join("");
+
+  const pb = document.getElementById("t-primary");
+  let next = !i.sd ? "START_DAY" : i.st ? null : i.onBreak ? "STOP_EAT" : (!i.se ? (now.getHours()>=11 && now.getHours()<15 && !isWeekend(now) ? "START_EAT" : "STOP_DAY") : "STOP_DAY");
+  const words = {START_DAY:"Commencer la journée",START_EAT:"Partir en pause",STOP_EAT:"Reprendre le travail",STOP_DAY:"Terminer la journée"};
+  pb.disabled = !next; pb.textContent = next ? words[next] : "Journée terminée";
+  pb.onclick = () => next && punch(next);
+
+  const st = document.getElementById("t-steps");
+  st.innerHTML = DAY_T.map(t=>{ const e = (t==="START_DAY"?i.sd:t==="START_EAT"?i.se:t==="STOP_EAT"?i.ee:i.st);
+    const short = {START_DAY:"Début",START_EAT:"Pause",STOP_EAT:"Reprise",STOP_DAY:"Fin"}[t];
+    return `<button data-t="${t}" class="${e?"done":""}"><span class="t">${e?fmtT(e.ts):"—"}</span>${short}</button>`; }).join("");
+  st.querySelectorAll("button").forEach(b=>b.onclick=()=>punch(b.dataset.t));
+
+  const g = gardes(now), open = g.find(x=>x.open), P = periods(now);
+  const head = document.getElementById("g-head"), gt = document.getElementById("g-time"), gs = document.getElementById("g-sub");
+  if(!P.lastEnd){ head.textContent = "Aucune fin de journée pointée"; }
+  const p = P.get(P.lastEnd||"");
+  const callsTxt = n => n+(n>1?" appels":" appel");
+  if(P.lastEnd && p.to){ head.textContent = "Dernière garde, du "+fmtWhen(p.from)+" au "+fmtWhen(p.to); }
+  else if(P.lastEnd){ head.textContent = "Garde depuis "+fmtWhen(p.from); }
+  gt.textContent = open ? "Intervention : "+fmtDur(open.dur) : fmtDur(p.dur)+" d'intervention";
+  gs.textContent = open ? "Depuis "+fmtWhen(open.start)+". Cumul de la période : "+fmtDur(p.dur)+", "+callsTxt(p.calls)+"."
+                        : callsTxt(p.calls)+(p.n?", "+p.n+(p.n>1?" interventions":" intervention"):"")+" sur cette période.";
+  const gb = document.getElementById("g-btn"); gb.textContent = open ? "Terminer la garde" : "Démarrer la garde"; gb.onclick = toggleGarde;
+  document.getElementById("g-call").onclick = logCall;
+
+  document.getElementById("t-chips").innerHTML = Object.entries(STATUS).map(([c,s])=>`<button class="chip" style="--c:${s.c}" data-c="${c}" aria-pressed="${i.status===c}">${s.l}</button>`).join("");
+  document.querySelectorAll("#t-chips .chip").forEach(b=>b.onclick=()=>setStatus(k,b.dataset.c));
+  document.getElementById("t-chipnote").textContent = `Une absence vaut ${fmtDur(db.settings.absence*60)} (base 38h). Un ½ congé ajoute ${fmtDur(db.settings.absence*30)} à vos heures pointées. Touchez à nouveau pour annuler ; pour un autre jour, passez par l'onglet Mois.`;
+}
+
+/* ---------- rendu : mois ---------- */
+let cur = new Date(); cur.setDate(1);
+function renderMonth(){
+  const now = new Date(), y=cur.getFullYear(), mo=cur.getMonth();
+  document.getElementById("m-title").textContent = MOIS.format(cur);
+  const first = new Date(y,mo,1), off = (first.getDay()+6)%7, start = new Date(y,mo,1-off);
+  const g = gardes(now); const T=db.settings.target*60;
+  let html = ["Lu","Ma","Me","Je","Ve","Sa","Di"].map(d=>`<div class="dow">${d}</div>`).join("");
+  let tot=0, diff=0, nd=0, gt=0, calls=0;
+  for(let n=0;n<42;n++){
+    const d = new Date(start); d.setDate(start.getDate()+n);
+    if(n>=35 && d.getMonth()!==mo) break;
+    const k = dkey(d), i = dayInfo(k, now), inM = d.getMonth()===mo;
+    const hasG = g.some(x=>x.start.startsWith(k)) || db.events.some(e=>e.type==="APPEL" && e.ts.startsWith(k));
+    let body = "";
+    if(i.status) body += `<span class="tag" style="--c:${STATUS[i.status].c}">${STATUS[i.status].l}</span>`;
+    const dd = dayDiff(i);
+    if(i.worked!=null){ const cls = dd==null?"":(dd>=0?"plus":"minus"); body += `<span class="h ${cls}">${fmtDur(i.worked)}</span>`; if(inM) tot+=i.worked; }
+    if(inM && dd!=null){ diff+=dd; nd++; }
+    if(inM){ gt += g.filter(x=>x.start.startsWith(k)).reduce((a,x)=>a+x.dur,0); calls += db.events.filter(e=>e.type==="APPEL" && e.ts.startsWith(k)).length; }
+    html += `<button class="d ${inM?"":"out"} ${isWeekend(d)?"we":""} ${k===dkey(now)?"today":""}" data-k="${k}"><span class="n">${d.getDate()}</span>${body}${hasG?'<i class="g" title="Garde"></i>':""}${i.flags.length?'<span class="flag">!</span>':""}</button>`;
+  }
+  const cal = document.getElementById("m-cal"); cal.innerHTML = html;
+  cal.querySelectorAll(".d").forEach(b=>b.onclick=()=>openDay(b.dataset.k));
+  document.getElementById("m-tot").innerHTML =
+    `<div><b>${fmtDur(tot)}</b>Prestées</div><div><b class="${diff>=0?"plus":"minus"}">${fmtDur(diff,true)}</b>Écart sur ${nd} j</div><div><b>${fmtDur(gt)}</b>Gardes, ${calls} ${calls>1?"appels":"appel"}</div>`;
+}
+
+/* ---------- feuille d'un jour ---------- */
+let openK = null;
+function openDay(k){ openK=k; drawDay(); document.getElementById("sheet").classList.add("open"); }
+function closeDay(){ openK=null; document.getElementById("sheet").classList.remove("open"); render(); }
+function drawDay(){
+  const k=openK, now=new Date(), i=dayInfo(k,now);
+  const evs = db.events.filter(e=>e.ts.startsWith(k)).sort((a,b)=>a.ts<b.ts?-1:1);
+  const box = document.getElementById("sheet-box");
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3>${JOUR.format(keyToDate(k))}</h3><button id="x" class="btn" style="width:auto;margin:0;padding:8px 14px">Fermer</button></div>
+    <p class="note" style="margin:0 0 8px">${i.worked!=null?"Prestées : <b>"+fmtDur(i.worked)+"</b>":"Aucun temps calculé"}${i.flags.length?" · à vérifier : "+i.flags.join(", "):""}</p>
+    <div class="chips" style="margin:8px 0 12px">${Object.entries(STATUS).map(([c,s])=>`<button class="chip" style="--c:${s.c}" data-c="${c}" aria-pressed="${i.status===c}">${s.l}</button>`).join("")}</div>
+    ${evs.length? evs.map(e=>`<div class="ev"><span>${LABEL[e.type]||e.type}</span><input type="time" step="1" value="${e.ts.slice(11,19)}" data-id="${e.id}"><button data-del="${e.id}" aria-label="Supprimer">×</button></div>`).join("") : '<p class="note">Aucun pointage ce jour.</p>'}
+    <div class="add"><select id="a-type">${ALL_T.map(t=>`<option value="${t}">${LABEL[t]}</option>`).join("")}</select><input id="a-time" type="time" step="1" value="08:00:00"><button id="a-add">Ajouter</button></div>`;
+  box.querySelector("#x").onclick = closeDay;
+  box.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ setStatus(k,b.dataset.c); drawDay(); });
+  box.querySelectorAll("input[data-id]").forEach(inp=>inp.onchange=()=>{
+    const e=db.events.find(x=>x.id===inp.dataset.id); if(!e||!inp.value) return;
+    const v = inp.value.length===5 ? inp.value+":00" : inp.value; e.ts = k+"T"+v; e.u = Date.now(); save(); drawDay(); toast("Heure modifiée."); });
+  box.querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>{
+    db.deleted[b.dataset.del]=Date.now(); db.events = db.events.filter(x=>x.id!==b.dataset.del); save(); drawDay(); toast("Pointage supprimé."); });
+  box.querySelector("#a-add").onclick=()=>{
+    const t=box.querySelector("#a-type").value, v=box.querySelector("#a-time").value; if(!v) return;
+    addEvent(t, k+"T"+(v.length===5?v+":00":v)); drawDay(); toast("Pointage ajouté."); };
+}
+document.getElementById("sheet").addEventListener("click", e=>{ if(e.target.id==="sheet") closeDay(); });
+
+/* ---------- rendu : bilan ---------- */
+function renderStats(){
+  const now=new Date(), T=db.settings.target*60, days=allDays(now).filter(i=>i.worked!=null && !i.live && !i.status);
+  const scored = scoredDays(now), nAbs = scored.filter(x=>x.i.status).length;
+  const solde = scored.reduce((a,x)=>a+x.diff,0);
+  const el = document.getElementById("s-solde"); el.textContent = fmtDur(solde,true); el.className="big num "+(solde>=0?"plus":"minus");
+  const avg = days.length ? days.reduce((a,i)=>a+i.worked,0)/days.length : 0;
+  document.getElementById("s-sub").textContent = scored.length ? `Solde sur ${scored.length} jours${nAbs?`, dont ${nAbs} avec absence`:""}, depuis le ${scored[0].i.k.split("-").reverse().join("/")}. Moyenne ${fmtDur(avg)} par jour travaillé.` : "Aucune journée complète pour l'instant.";
+  const wk = {};
+  for(const i of dayKeys().map(k=>dayInfo(k,now))){ const dd=dayDiff(i); if(i.worked==null && dd==null) continue;
+    const w=isoWeek(keyToDate(i.k)), key=w.y+"-"+pad(w.w);
+    wk[key]=wk[key]||{w:w.w,tot:0,diff:0,n:0}; wk[key].tot+=i.worked||0; if(dd!=null){ wk[key].diff+=dd; wk[key].n++; } }
+  const rows = Object.entries(wk).sort().reverse().slice(0,12);
+  document.getElementById("s-weeks").innerHTML = `<tr><th>Semaine</th><th>Jours</th><th>Prestées</th><th>Écart</th></tr>`+
+    rows.map(([,r])=>`<tr><td>S${r.w}</td><td>${r.n}</td><td class="num">${fmtDur(r.tot)}</td><td class="num ${r.diff>=0?"plus":"minus"}">${fmtDur(r.diff,true)}</td></tr>`).join("");
+  const PL = periods(now).list.filter(p=>p.calls||p.n).reverse().slice(0,15);
+  document.getElementById("s-periods").innerHTML = PL.length ? `<tr><th>Période</th><th>Appels</th><th>Interv.</th><th>Durée</th></tr>`+
+    PL.map(p=>`<tr><td>${p.from?fmtWhen(p.from):"Avant le 1er pointage"}<br><span class="note">→ ${p.to?fmtWhen(p.to):"en cours"}</span></td><td>${p.calls}</td><td>${p.n}</td><td class="num">${fmtDur(p.dur)}</td></tr>`).join("")
+    : `<tr><td class="note">Aucun appel ni intervention enregistré.</td></tr>`;
+  const years = {};
+  for(const [k,c] of Object.entries(db.statuses)){ const y=k.slice(0,4); years[y]=years[y]||{VAC:0,DEMI:0,RTT:0,FERIE:0,MAL:0,G:0,A:0}; years[y][c]++; }
+  for(const g of gardes(now)){ const y=g.start.slice(0,4); years[y]=years[y]||{VAC:0,DEMI:0,RTT:0,FERIE:0,MAL:0,G:0,A:0}; years[y].G+=g.dur; }
+  for(const e of db.events) if(e.type==="APPEL"){ const y=e.ts.slice(0,4); years[y]=years[y]||{VAC:0,DEMI:0,RTT:0,FERIE:0,MAL:0,G:0,A:0}; years[y].A++; }
+  const ys = Object.keys(years).sort().reverse();
+  document.getElementById("s-abs").innerHTML = ys.length ? `<tr><th>Année</th><th>Vac.</th><th>½</th><th>RTT</th><th>Férié</th><th>Mal.</th><th>Appels</th><th>Gardes</th></tr>`+
+    ys.map(y=>{const r=years[y]; return `<tr><td>${y}</td><td>${r.VAC}</td><td>${r.DEMI}</td><td>${r.RTT}</td><td>${r.FERIE}</td><td>${r.MAL}</td><td>${r.A}</td><td class="num">${fmtDur(r.G)}</td></tr>`;}).join("") : `<tr><td class="note">Rien de déclaré pour l'instant.</td></tr>`;
+  // jours ouvrés sans rien depuis le premier pointage
+  const first = days[0]?.k; const miss=[];
+  if(first){ const d=keyToDate(first), end=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    for(;d<end;d.setDate(d.getDate()+1)){ if(isWeekend(d)) continue; const k=dkey(d); if(!db.statuses[k] && !eventsOn(k).length) miss.push(k.slice(8,10)+"/"+k.slice(5,7)); } }
+  document.getElementById("s-missing").textContent = miss.length ? miss.join(", ")+". Déclarez-les (vacances, RTT…) ou ajoutez les pointages depuis l'onglet Mois." : "Aucun. Tout est en ordre.";
+}
+
+/* ---------- import / export ---------- */
+function parseDate(s){
+  s=s.trim(); let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return m[1]+"-"+pad(m[2])+"-"+pad(m[3]);
+  if((m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))){ const y=m[3].length===2?"20"+m[3]:m[3]; return y+"-"+pad(m[2])+"-"+pad(m[1]); }
+  if(/^\d{5}(\.\d+)?$/.test(s)){ const d=new Date(Date.UTC(1899,11,30)+Math.floor(+s)*864e5); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
+  return null;
+}
+function parseTime(s){
+  s=(s||"").trim(); let m;
+  if((m=s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/))) return pad(m[1])+":"+m[2]+":"+(m[3]||"00");
+  if(/^0?\.\d+$/.test(s.replace(",","."))){ const t=Math.round(parseFloat(s.replace(",","."))*86400); return pad(Math.floor(t/3600))+":"+pad(Math.floor(t/60)%60)+":"+pad(t%60); }
+  return null;
+}
+function merge(events, statuses){
+  const seen = new Set(db.events.map(e=>e.ts+"|"+e.type)); let added=0, st=0;
+  for(const [ts,type] of events){ if(!ALL_T.includes(type)) continue; const key=ts+"|"+type; if(seen.has(key)) continue; seen.add(key);
+    db.events.push({id:(Date.now()+added).toString(36)+Math.random().toString(36).slice(2,6), ts, type}); added++; }
+  for(const [k,c] of Object.entries(statuses||{})){ if(STATUS[c] && db.statuses[k]!==c){ db.statuses[k]=c; db.statusMeta[k]=Date.now(); st++; } }
+  save(); render(); return {added, st};
+}
+function importText(txt){
+  txt = txt.trim(); if(!txt){ toast("Collez d'abord des données dans la zone de texte."); return; }
+  if(txt[0]==="{"){
+    try{ const o=JSON.parse(txt); if(!Array.isArray(o.events)) throw 0;
+      if(o.settings) db.settings=Object.assign(db.settings,o.settings);
+      const r = merge(o.events.map(e=>[e.ts,e.type]), o.statuses); toast(`${r.added} pointages et ${r.st} statuts importés.`); }
+    catch(e){ toast("Sauvegarde illisible : vérifiez que le texte est complet."); }
+    return;
+  }
+  const evs=[], sts={}; let bad=0;
+  for(const line of txt.split(/\r?\n/)){
+    if(!line.trim()) continue;
+    const c = line.split(/\t|;|,(?=\s*\S)/).map(x=>x.trim());
+    const type = (c[2]||c[1]||"").toUpperCase(); const k = parseDate(c[0]||"");
+    if(!k){ if(!/date/i.test(line)) bad++; continue; }
+    if(type.startsWith("STATUT:")){ sts[k]=type.slice(7); continue; }
+    const t = parseTime(c[1]); if(!t || !ALL_T.includes(type)){ bad++; continue; }
+    evs.push([k+"T"+t, type]);
+  }
+  const r = merge(evs, sts);
+  toast(`${r.added} pointages et ${r.st} statuts importés`+(bad?`, ${bad} lignes ignorées.`:"."));
+}
+function exportTSV(){
+  const rows = ["Date\tHeure\tAction"];
+  for(const e of [...db.events].sort((a,b)=>a.ts<b.ts?-1:1)) rows.push(e.ts.slice(8,10)+"/"+e.ts.slice(5,7)+"/"+e.ts.slice(0,4)+"\t"+e.ts.slice(11,19)+"\t"+e.type);
+  for(const [k,c] of Object.entries(db.statuses).sort()) rows.push(k.slice(8,10)+"/"+k.slice(5,7)+"/"+k.slice(0,4)+"\t\tSTATUT:"+c);
+  return rows.join("\n");
+}
+function showOut(txt){ const o=document.getElementById("d-out"); o.value=txt; o.classList.remove("hidden"); document.getElementById("d-copy").classList.remove("hidden"); o.scrollIntoView({block:"center"}); }
+async function copyOut(){
+  const o=document.getElementById("d-out");
+  try{ await navigator.clipboard.writeText(o.value); toast("Copié."); }
+  catch(e){ o.focus(); o.select(); try{ document.execCommand("copy"); toast("Copié."); }catch(_){ toast("Sélectionnez le texte et copiez-le à la main."); } }
+}
+
+/* ---------- réglages ---------- */
+function applyTheme(){ const t=db.settings.theme; if(t) document.documentElement.setAttribute("data-theme",t); else document.documentElement.removeAttribute("data-theme"); }
+function renderData(){
+  const t=db.settings.target; document.getElementById("set-target").value = pad(Math.floor(t/60))+":"+pad(t%60);
+  document.getElementById("set-pause").value = db.settings.pause;
+  const ab=db.settings.absence; document.getElementById("set-abs").value = pad(Math.floor(ab/60))+":"+pad(ab%60);
+  document.getElementById("set-theme").value = db.settings.theme||"";
+  document.getElementById("gh-owner").value = gh.owner; document.getElementById("gh-repo").value = gh.repo;
+  document.getElementById("gh-path").value = gh.path||"data.json"; document.getElementById("gh-branch").value = gh.branch||"main";
+  document.getElementById("gh-token").value = gh.token;
+  document.getElementById("d-info").textContent = `${db.events.length} pointages et ${Object.keys(db.statuses).length} jours déclarés sont enregistrés dans ce navigateur, sur ce téléphone uniquement. Sans synchro GitHub, faites une sauvegarde complète de temps en temps : vider les données du navigateur les efface.`;
+}
+document.getElementById("set-target").onchange=e=>{ const [h,m]=e.target.value.split(":").map(Number); if(!isNaN(h)){ db.settings.target=h*60+(m||0); save(); toast("Objectif enregistré."); } };
+document.getElementById("set-abs").onchange=e=>{ const [h,m]=e.target.value.split(":").map(Number); if(!isNaN(h)){ db.settings.absence=h*60+(m||0); save(); toast("Valeur d'absence enregistrée."); } };
+document.getElementById("set-pause").onchange=e=>{ const v=Math.max(0,Math.min(120,parseInt(e.target.value)||0)); db.settings.pause=v; save(); toast("Pause par défaut enregistrée."); };
+document.getElementById("set-theme").onchange=e=>{ db.settings.theme=e.target.value; save(); applyTheme(); };
+document.getElementById("d-seed").onclick=()=>{ const r=merge(SEED,{}); toast(r.added ? `${r.added} pointages repris de l'Excel.` : "Ces données sont déjà présentes."); };
+document.getElementById("d-import").onclick=()=>importText(document.getElementById("d-in").value);
+document.getElementById("d-file").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>importText(String(r.result)); r.readAsText(f); e.target.value=""; };
+document.getElementById("d-exp-tsv").onclick=()=>showOut(exportTSV());
+document.getElementById("d-exp-json").onclick=()=>showOut(JSON.stringify(db));
+document.getElementById("d-copy").onclick=copyOut;
+document.getElementById("d-wipe").onclick=()=>{ if(confirm("Effacer tous les pointages et statuts de ce téléphone ? Cette action est définitive.")){ db.events=[]; db.statuses={}; db.statusMeta={}; db.deleted={}; save(); render(); toast("Données effacées."); } };
+
+
+/* ---------- synchro GitHub ---------- */
+const GHKEY = "pointage.gh";
+let gh = {owner:"", repo:"", path:"data.json", branch:"main", token:"", last:null, pending:false, err:""};
+let syncing = false;
+function ghLoad(){ try{ Object.assign(gh, JSON.parse(localStorage.getItem(GHKEY)||"{}")); }catch(e){} }
+function ghSave(){ try{ localStorage.setItem(GHKEY, JSON.stringify(gh)); }catch(e){} }
+const ghReady = () => !!(gh.owner && gh.repo && gh.token);
+const encP = s => s.split("/").map(encodeURIComponent).join("/");
+function b64enc(str){ const b=new TextEncoder().encode(str); let s=""; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null, b.subarray(i,i+0x8000)); return btoa(s); }
+function b64dec(b64){ const s=atob(b64.replace(/\s/g,"")); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return new TextDecoder().decode(b); }
+function ghErr(st){
+  return ({401:"Token refusé ou expiré.",403:"Le token n'a pas le droit d'écrire dans ce dépôt.",404:"Dépôt ou branche introuvable, ou token sans accès à ce dépôt.",409:"Le dépôt est vide : créez-le avec un README.",422:"GitHub a refusé l'envoi (vérifiez la branche)."})[st] || ("Erreur GitHub "+st+".");
+}
+function ghApi(method, url, body){
+  const h = {Authorization:"Bearer "+gh.token.trim(), Accept:"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"};
+  if(body) h["Content-Type"]="application/json";
+  return fetch("https://api.github.com"+url, {method, headers:h, body: body?JSON.stringify(body):undefined, cache:"no-store"});
+}
+function mergeRemote(rem){
+  const del = Object.assign({}, db.deleted);
+  for(const [id,t] of Object.entries(rem.deleted||{})) del[id] = Math.max(t, del[id]||0);
+  const map = new Map();
+  for(const e of [...(rem.events||[]), ...db.events]){ if(!e || del[e.id]) continue; const o=map.get(e.id); if(!o || (e.u||0)>(o.u||0)) map.set(e.id, e); }
+  const seen = new Set(), out = [];
+  for(const e of [...map.values()].sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:0)){ const k=e.ts+"|"+e.type; if(seen.has(k)) continue; seen.add(k); out.push(e); }
+  db.events = out; db.deleted = del;
+  const rs = rem.statuses||{}, rm = rem.statusMeta||{};
+  const keys = new Set([...Object.keys(rs), ...Object.keys(rm), ...Object.keys(db.statuses), ...Object.keys(db.statusMeta)]);
+  const ns = {}, nm = {};
+  for(const k of keys){
+    const lu = db.statusMeta[k]||0, ru = rm[k]||0;
+    const src = ru>lu ? rs : lu>ru ? db.statuses : (db.statuses[k] ? db.statuses : rs);
+    if(src[k]) ns[k]=src[k];
+    if(lu||ru) nm[k]=Math.max(lu,ru);
+  }
+  db.statuses = ns; db.statusMeta = nm;
+}
+async function ghSync(manual){
+  if(!ghReady()){ if(manual) toast("Renseignez d'abord le compte, le dépôt et le token."); return; }
+  if(syncing) return;
+  syncing = true; gh.pending = true; ghSave(); renderSync();
+  const url = `/repos/${encP(gh.owner.trim())}/${encP(gh.repo.trim())}/contents/${encP((gh.path||"data.json").trim())}`;
+  const branch = (gh.branch||"main").trim();
+  try{
+    for(let attempt=0; attempt<2; attempt++){
+      const g = await ghApi("GET", url+"?ref="+encodeURIComponent(branch));
+      let sha = null;
+      if(g.status===200){
+        const j = await g.json(); sha = j.sha;
+        if(!j.content) throw new Error("Fichier distant trop volumineux pour être relu.");
+        mergeRemote(JSON.parse(b64dec(j.content)));
+      } else if(g.status!==404) throw new Error(ghErr(g.status));
+      save();
+      const payload = {v:1, events:db.events, statuses:db.statuses, statusMeta:db.statusMeta, deleted:db.deleted, settings:db.settings};
+      const body = {message:"Pointage "+dkey(new Date()), content:b64enc(JSON.stringify(payload,null,1)), branch};
+      if(sha) body.sha = sha;
+      const p = await ghApi("PUT", url, body);
+      if(p.status===200 || p.status===201){ gh.pending=false; gh.last=Date.now(); gh.err=""; ghSave(); toast(manual?"Synchronisé avec GitHub.":"Journée envoyée sur GitHub."); return; }
+      if(p.status===409 && sha && attempt===0) continue;
+      throw new Error(ghErr(p.status));
+    }
+  } catch(e){
+    gh.err = (e instanceof TypeError) ? "Pas de réseau, ou adresse qui bloque GitHub (l'aperçu Claude le bloque)." : e.message;
+    ghSave(); toast("Synchro échouée : "+gh.err+" Nouvel essai à la prochaine ouverture.");
+  } finally { syncing = false; render(); }
+}
+function syncText(){
+  if(!ghReady()) return {t:"", err:false};
+  if(syncing) return {t:"Synchronisation en cours…", err:false};
+  if(gh.pending) return {t:"Synchro en attente"+(gh.err?" : "+gh.err:"."), err:true};
+  if(gh.last){ const d=new Date(gh.last); return {t:"Dernière synchro GitHub le "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+" à "+pad(d.getHours())+":"+pad(d.getMinutes())+".", err:false}; }
+  return {t:"Synchro GitHub configurée, jamais lancée.", err:false};
+}
+function renderSync(){
+  const s = syncText();
+  const a = document.getElementById("t-sync"); a.textContent = s.t; a.className = "syncline"+(s.err?" err":"");
+  const b = document.getElementById("gh-state"); b.textContent = s.t || "Non configurée."; b.className = "syncline"+(s.err?" err":"");
+}
+[["gh-owner","owner"],["gh-repo","repo"],["gh-path","path"],["gh-branch","branch"],["gh-token","token"]].forEach(([id,k])=>{
+  document.getElementById(id).onchange = e => { gh[k] = e.target.value.trim(); ghSave(); renderSync(); };
+});
+document.getElementById("gh-now").onclick = () => ghSync(true);
+document.getElementById("gh-forget").onclick = () => { if(confirm("Retirer le token de ce téléphone ? Vos données locales restent intactes.")){ gh.token=""; ghSave(); renderData(); renderSync(); toast("Token retiré."); } };
+
+/* ---------- navigation ---------- */
+let view="today";
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{ view=b.dataset.v;
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", x===b));
+  ["today","month","stats","data"].forEach(v=>document.getElementById("v-"+v).classList.toggle("hidden", v!==view));
+  window.scrollTo(0,0); render(); });
+document.getElementById("m-prev").onclick=()=>{ cur.setMonth(cur.getMonth()-1); renderMonth(); };
+document.getElementById("m-next").onclick=()=>{ cur.setMonth(cur.getMonth()+1); renderMonth(); };
+
+function render(){ renderSync(); if(view==="today") renderToday(); else if(view==="month") renderMonth(); else if(view==="stats") renderStats(); else renderData(); }
+let tt; function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove("show"),2600); }
+
+load(); ghLoad(); applyTheme(); render();
+if(gh.pending) ghSync(false);
+setInterval(()=>{ if(view==="today" && !openK) renderToday(); }, 20000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ render(); if(gh.pending) ghSync(false); } });
+window.addEventListener("online",()=>{ if(gh.pending) ghSync(false); });
+</script>
+</body>
+</html>
