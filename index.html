@@ -308,9 +308,10 @@ function load(){
   try{ const raw = localStorage.getItem(KEY); if(raw){ const o = JSON.parse(raw); if(o && Array.isArray(o.events)){ db.events=o.events; db.statuses=o.statuses||{}; db.statusMeta=o.statusMeta||{}; db.deleted=o.deleted||{}; db.settings=Object.assign(db.settings,o.settings||{}); } } }
   catch(e){ toast("Lecture du stockage impossible : les données ne seront pas conservées."); }
 }
-function save(){
+function save(fromSync){
   try{ localStorage.setItem(KEY, JSON.stringify(db)); }
   catch(e){ toast("Enregistrement impossible sur ce navigateur."); }
+  if(!fromSync && typeof ghQueue==="function") ghQueue();
 }
 
 /* ---------- dates ---------- */
@@ -417,7 +418,6 @@ function punch(type){
   addEvent(type, tsOf(now));
   toast(LABEL[type]+" pointé à "+tsOf(now).slice(11,16)+".");
   render();
-  if(type==="STOP_DAY") ghSync(false);
 }
 function toggleGarde(){
   const now = new Date(), open = gardes(now).find(g=>g.open);
@@ -657,7 +657,7 @@ document.getElementById("d-wipe").onclick=()=>{ if(confirm("Effacer tous les poi
 /* ---------- synchro GitHub ---------- */
 const GHKEY = "pointage.gh";
 let gh = {owner:"", repo:"", path:"data.json", branch:"main", token:"", last:null, pending:false, err:""};
-let syncing = false;
+let syncing = false, syncAgain = false, ghTimer = null, lastPull = 0;
 function ghLoad(){ try{ Object.assign(gh, JSON.parse(localStorage.getItem(GHKEY)||"{}")); }catch(e){} }
 function ghSave(){ try{ localStorage.setItem(GHKEY, JSON.stringify(gh)); }catch(e){} }
 const ghReady = () => !!(gh.owner && gh.repo && gh.token);
@@ -691,39 +691,56 @@ function mergeRemote(rem){
   }
   db.statuses = ns; db.statusMeta = nm;
 }
+/* chaque modification est envoyée sur GitHub (regroupées si elles s'enchaînent) */
+function ghQueue(){
+  if(!ghReady()) return;
+  gh.pending = true; ghSave(); renderSync();
+  clearTimeout(ghTimer); ghTimer = setTimeout(()=>ghSync(false), 1500);
+}
+const payloadOf = o => ({v:1, events:o.events||[], statuses:o.statuses||{}, statusMeta:o.statusMeta||{}, deleted:o.deleted||{}, settings:o.settings||{}});
 async function ghSync(manual){
   if(!ghReady()){ if(manual) toast("Renseignez d'abord le compte, le dépôt et le token."); return; }
-  if(syncing) return;
-  syncing = true; gh.pending = true; ghSave(); renderSync();
+  if(syncing){ syncAgain = true; return; }
+  clearTimeout(ghTimer);
+  syncing = true; syncAgain = false; lastPull = Date.now(); renderSync();
   const url = `/repos/${encP(gh.owner.trim())}/${encP(gh.repo.trim())}/contents/${encP((gh.path||"data.json").trim())}`;
   const branch = (gh.branch||"main").trim();
   try{
     for(let attempt=0; attempt<2; attempt++){
       const g = await ghApi("GET", url+"?ref="+encodeURIComponent(branch));
-      let sha = null;
+      let sha = null, remote = null;
       if(g.status===200){
         const j = await g.json(); sha = j.sha;
         if(!j.content) throw new Error("Fichier distant trop volumineux pour être relu.");
-        mergeRemote(JSON.parse(b64dec(j.content)));
+        remote = JSON.parse(b64dec(j.content));
+        mergeRemote(remote);
       } else if(g.status!==404) throw new Error(ghErr(g.status));
-      save();
-      const payload = {v:1, events:db.events, statuses:db.statuses, statusMeta:db.statusMeta, deleted:db.deleted, settings:db.settings};
+      save(true);
+      const payload = payloadOf(db);
+      /* rien de nouveau de ce côté : on a juste récupéré la version GitHub, pas besoin d'envoyer */
+      const norm = o => JSON.stringify(Object.assign(payloadOf(o), {events:[...(o.events||[])].sort((x,y)=>x.ts<y.ts?-1:x.ts>y.ts?1:0)}));
+      if(remote && norm(payload)===norm(Object.assign({}, remote, {settings:db.settings}))){
+        gh.pending=false; gh.last=Date.now(); gh.err=""; ghSave(); if(manual) toast("Déjà à jour avec GitHub."); return;
+      }
       const body = {message:"Pointage "+dkey(new Date()), content:b64enc(JSON.stringify(payload,null,1)), branch};
       if(sha) body.sha = sha;
       const p = await ghApi("PUT", url, body);
-      if(p.status===200 || p.status===201){ gh.pending=false; gh.last=Date.now(); gh.err=""; ghSave(); toast(manual?"Synchronisé avec GitHub.":"Journée envoyée sur GitHub."); return; }
+      if(p.status===200 || p.status===201){ gh.pending=false; gh.last=Date.now(); gh.err=""; ghSave(); if(manual) toast("Synchronisé avec GitHub."); return; }
       if(p.status===409 && sha && attempt===0) continue;
       throw new Error(ghErr(p.status));
     }
   } catch(e){
     gh.err = (e instanceof TypeError) ? "Pas de réseau, ou adresse qui bloque GitHub (l'aperçu Claude le bloque)." : e.message;
-    ghSave(); toast("Synchro échouée : "+gh.err+" Nouvel essai à la prochaine ouverture.");
-  } finally { syncing = false; render(); }
+    gh.pending = true; ghSave(); if(manual) toast("Synchro échouée : "+gh.err);
+  } finally {
+    syncing = false; render();
+    if(syncAgain){ syncAgain = false; ghSync(false); }
+  }
 }
 function syncText(){
   if(!ghReady()) return {t:"", err:false};
   if(syncing) return {t:"Synchronisation en cours…", err:false};
-  if(gh.pending) return {t:"Synchro en attente"+(gh.err?" : "+gh.err:"."), err:true};
+  if(gh.pending) return gh.err ? {t:"Pas encore envoyé : "+gh.err+" Nouvel essai automatique.", err:true} : {t:"Envoi sur GitHub…", err:false};
   if(gh.last){ const d=new Date(gh.last); return {t:"Dernière synchro GitHub le "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+" à "+pad(d.getHours())+":"+pad(d.getMinutes())+".", err:false}; }
   return {t:"Synchro GitHub configurée, jamais lancée.", err:false};
 }
@@ -751,9 +768,9 @@ function render(){ renderSync(); if(view==="today") renderToday(); else if(view=
 let tt; function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove("show"),2600); }
 
 load(); ghLoad(); applyTheme(); render();
-if(gh.pending) ghSync(false);
+if(ghReady()) ghSync(false);   /* à l'ouverture : récupère les pointages faits sur un autre appareil */
 setInterval(()=>{ if(view==="today" && !openK) renderToday(); }, 20000);
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ render(); if(gh.pending) ghSync(false); } });
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ render(); if(ghReady() && (gh.pending || Date.now()-lastPull>30000)) ghSync(false); } });
 window.addEventListener("online",()=>{ if(gh.pending) ghSync(false); });
 if("serviceWorker" in navigator && location.protocol==="https:" && !location.hostname.endsWith("claude.ai")){
   navigator.serviceWorker.register("sw.js").catch(()=>{});
