@@ -241,12 +241,12 @@ textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:
 
     <section class="block">
       <h2>Synchro GitHub</h2>
-      <p class="note" style="margin-top:0">Envoi automatique à chaque fin de journée, vers un fichier de votre dépôt privé.</p>
+      <p class="note" style="margin-top:0">Envoi automatique à chaque action, vers un fichier de votre dépôt privé. Le token est la clé commune à toutes les applis CrabLab (G7, ProjectLab, NomLab) : la changer ici la change partout.</p>
       <div class="field"><label for="gh-owner">Compte</label><input class="wide" id="gh-owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="votre-pseudo"></div>
       <div class="field"><label for="gh-repo">Dépôt</label><input class="wide" id="gh-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="pointage-data"></div>
       <div class="field"><label for="gh-path">Fichier</label><input class="wide" id="gh-path" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="field"><label for="gh-branch">Branche</label><input class="wide" id="gh-branch" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-      <div class="field"><label for="gh-token">Token</label><input class="wide" id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+      <div class="field"><label for="gh-token">Token (clé commune CrabLab)</label><input class="wide" id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></div>
       <p class="syncline" id="gh-state"></p>
       <div class="row2">
         <button class="btn" id="gh-now" style="text-align:center">Synchroniser maintenant</button>
@@ -637,9 +637,9 @@ function renderData(){
   document.getElementById("set-pause").value = db.settings.pause;
   const ab=db.settings.absence; document.getElementById("set-abs").value = pad(Math.floor(ab/60))+":"+pad(ab%60);
   document.getElementById("set-theme").value = db.settings.theme||"";
-  document.getElementById("gh-owner").value = gh.owner; document.getElementById("gh-repo").value = gh.repo;
+  document.getElementById("gh-owner").value = gh.owner || ghOwner(); document.getElementById("gh-repo").value = gh.repo;
   document.getElementById("gh-path").value = gh.path||"data.json"; document.getElementById("gh-branch").value = gh.branch||"main";
-  document.getElementById("gh-token").value = gh.token;
+  document.getElementById("gh-token").value = ghToken();
   document.getElementById("d-info").textContent = `${db.events.length} pointages et ${Object.keys(db.statuses).length} jours déclarés sont enregistrés dans ce navigateur, sur ce téléphone uniquement. Sans synchro GitHub, faites une sauvegarde complète de temps en temps : vider les données du navigateur les efface.`;
 }
 document.getElementById("set-target").onchange=e=>{ const [h,m]=e.target.value.split(":").map(Number); if(!isNaN(h)){ db.settings.target=h*60+(m||0); save(); toast("Objectif enregistré."); } };
@@ -660,7 +660,20 @@ let gh = {owner:"", repo:"", path:"data.json", branch:"main", token:"", last:nul
 let syncing = false, syncAgain = false, ghTimer = null, lastPull = 0;
 function ghLoad(){ try{ Object.assign(gh, JSON.parse(localStorage.getItem(GHKEY)||"{}")); }catch(e){} }
 function ghSave(){ try{ localStorage.setItem(GHKEY, JSON.stringify(gh)); }catch(e){} }
-const ghReady = () => !!(gh.owner && gh.repo && gh.token);
+/* clé commune à toutes les applis CrabLab (même stockage que G7, ProjectLab et NomLab) */
+const SHARED_KEY = "ghdocs.config";
+function sharedCfg(){ try{ return JSON.parse(localStorage.getItem(SHARED_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function setSharedToken(tok){ const c=sharedCfg(); c.token=tok; try{ localStorage.setItem(SHARED_KEY, JSON.stringify(c)); }catch(e){} }
+/* token utilisé : la clé commune, sinon l'ancien token propre au pointage */
+const ghToken = () => (sharedCfg().token || gh.token || "").trim();
+/* compte : celui du pointage, sinon celui des autres applis ou de la page d'accueil */
+function ghOwner(){
+  if(gh.owner) return gh.owner.trim();
+  const s=sharedCfg(); if(s.owner) return s.owner.trim();
+  try{ const h=JSON.parse(localStorage.getItem("hub.config")||"{}"); if(h && h.owner) return String(h.owner).trim(); }catch(e){}
+  return "";
+}
+const ghReady = () => !!(ghOwner() && gh.repo && ghToken());
 const encP = s => s.split("/").map(encodeURIComponent).join("/");
 function b64enc(str){ const b=new TextEncoder().encode(str); let s=""; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null, b.subarray(i,i+0x8000)); return btoa(s); }
 function b64dec(b64){ const s=atob(b64.replace(/\s/g,"")); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return new TextDecoder().decode(b); }
@@ -668,7 +681,7 @@ function ghErr(st){
   return ({401:"Token refusé ou expiré.",403:"Le token n'a pas le droit d'écrire dans ce dépôt.",404:"Dépôt ou branche introuvable, ou token sans accès à ce dépôt.",409:"Le dépôt est vide : créez-le avec un README.",422:"GitHub a refusé l'envoi (vérifiez la branche)."})[st] || ("Erreur GitHub "+st+".");
 }
 function ghApi(method, url, body){
-  const h = {Authorization:"Bearer "+gh.token.trim(), Accept:"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"};
+  const h = {Authorization:"Bearer "+ghToken(), Accept:"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"};
   if(body) h["Content-Type"]="application/json";
   return fetch("https://api.github.com"+url, {method, headers:h, body: body?JSON.stringify(body):undefined, cache:"no-store"});
 }
@@ -703,7 +716,7 @@ async function ghSync(manual){
   if(syncing){ syncAgain = true; return; }
   clearTimeout(ghTimer);
   syncing = true; syncAgain = false; lastPull = Date.now(); renderSync();
-  const url = `/repos/${encP(gh.owner.trim())}/${encP(gh.repo.trim())}/contents/${encP((gh.path||"data.json").trim())}`;
+  const url = `/repos/${encP(ghOwner())}/${encP(gh.repo.trim())}/contents/${encP((gh.path||"data.json").trim())}`;
   const branch = (gh.branch||"main").trim();
   try{
     for(let attempt=0; attempt<2; attempt++){
@@ -749,11 +762,16 @@ function renderSync(){
   const a = document.getElementById("t-sync"); a.textContent = s.t; a.className = "syncline"+(s.err?" err":"");
   const b = document.getElementById("gh-state"); b.textContent = s.t || "Non configurée."; b.className = "syncline"+(s.err?" err":"");
 }
-[["gh-owner","owner"],["gh-repo","repo"],["gh-path","path"],["gh-branch","branch"],["gh-token","token"]].forEach(([id,k])=>{
+[["gh-owner","owner"],["gh-repo","repo"],["gh-path","path"],["gh-branch","branch"]].forEach(([id,k])=>{
   document.getElementById(id).onchange = e => { gh[k] = e.target.value.trim(); ghSave(); renderSync(); };
 });
+document.getElementById("gh-token").onchange = e => {
+  /* le token saisi devient la clé commune : G7, ProjectLab et NomLab l'utilisent aussi */
+  setSharedToken(e.target.value.trim()); gh.token = ""; ghSave(); renderSync();
+  if(ghReady()) ghSync(true);
+};
 document.getElementById("gh-now").onclick = () => ghSync(true);
-document.getElementById("gh-forget").onclick = () => { if(confirm("Retirer le token de ce téléphone ? Vos données locales restent intactes.")){ gh.token=""; ghSave(); renderData(); renderSync(); toast("Token retiré."); } };
+document.getElementById("gh-forget").onclick = () => { if(confirm("Retirer la clé commune de cet appareil ? G7, ProjectLab et NomLab seront aussi déconnectés. Vos données locales restent intactes.")){ gh.token=""; ghSave(); setSharedToken(""); renderData(); renderSync(); toast("Token retiré."); } };
 
 /* ---------- navigation ---------- */
 let view="today";
