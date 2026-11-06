@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#E6E9EC">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#E6E9EC">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#151B21">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pointage">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Pointage</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,6 +46,10 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--steel);outline-offset:2px}
 main{max-width:560px;margin:0 auto;padding:12px 16px 110px}
 .num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+
+/* Retour à CrabLab (visible seulement si on vient de la page d'accueil) */
+nav.tabs #crabHome{flex:none;width:52px;border:0;border-top:3px solid transparent;border-right:1px solid var(--line);background:none;color:var(--muted);font-size:22px;padding:8px 0 10px}
+nav.tabs #crabHome:hover{color:var(--ink)}
 
 /* Barre d'onglets */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
@@ -244,11 +255,6 @@ textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:
     </section>
 
     <section class="block">
-      <h2>Reprendre l'Excel actuel</h2>
-      <button class="btn" id="d-seed">Charger les données de l'Excel<small>137 pointages du 13/08 au 07/10/2026, repris de RawData. Les doublons sont ignorés.</small></button>
-    </section>
-
-    <section class="block">
       <h2>Importer</h2>
       <p class="note" style="margin-top:0">Collez les colonnes Date, Heure, Action copiées depuis RawData, un export de cette app, ou une sauvegarde complète.</p>
       <textarea id="d-in" placeholder="13/08/2026	08:00:00	START_DAY"></textarea>
@@ -276,7 +282,7 @@ textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:
   </div>
 </main>
 
-<nav class="tabs" role="tablist"><div class="in">
+<nav class="tabs" role="tablist"><div class="in"><button id="crabHome" role="link" hidden aria-label="Retour à CrabLab" title="Retour à CrabLab">⌂</button>
   <button role="tab" data-v="today" aria-selected="true">Aujourd'hui</button>
   <button role="tab" data-v="month">Mois</button>
   <button role="tab" data-v="stats">Bilan</button>
@@ -288,7 +294,7 @@ textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:
 
 <script>
 "use strict";
-const SEED = [["2026-08-13T08:00:00","START_DAY"],["2026-08-13T12:11:33","START_EAT"],["2026-08-13T12:33:59","STOP_EAT"],["2026-08-13T16:16:33","STOP_DAY"],["2026-08-14T07:39:44","START_DAY"],["2026-08-14T12:25:06","START_EAT"],["2026-08-14T13:01:09","STOP_EAT"],["2026-08-14T16:50:05","STOP_DAY"],["2026-08-17T07:36:14","START_DAY"],["2026-08-17T12:00:00","START_EAT"],["2026-08-17T12:30:00","STOP_EAT"],["2026-08-17T16:10:33","STOP_DAY"],["2026-08-18T07:52:05","START_DAY"],["2026-08-18T12:08:38","START_EAT"],["2026-08-18T12:38:38","STOP_EAT"],["2026-08-18T16:33:15","STOP_DAY"],["2026-08-19T07:40:08","START_DAY"],["2026-08-19T12:02:37","START_EAT"],["2026-08-19T12:39:26","STOP_EAT"],["2026-08-19T17:04:25","STOP_DAY"],["2026-08-20T07:41:53","START_DAY"],["2026-08-20T12:05:50","START_EAT"],["2026-08-20T12:25:50","STOP_EAT"],["2026-08-20T16:43:08","STOP_DAY"],["2026-08-21T07:40:35","START_DAY"],["2026-08-21T12:05:20","START_EAT"],["2026-08-21T12:42:13","STOP_EAT"],["2026-08-21T16:10:59","STOP_DAY"],["2026-08-24T07:46:05","START_DAY"],["2026-08-24T11:59:23","START_EAT"],["2026-08-24T12:32:23","STOP_EAT"],["2026-08-24T16:30:16","STOP_DAY"],["2026-08-25T07:33:12","START_DAY"],["2026-08-25T12:25:31","START_EAT"],["2026-08-25T12:49:26","STOP_EAT"],["2026-08-25T16:22:50","STOP_DAY"],["2026-08-27T07:34:55","START_DAY"],["2026-08-27T12:03:17","START_EAT"],["2026-08-27T12:25:31","STOP_EAT"],["2026-08-27T17:02:45","STOP_DAY"],["2026-08-28T07:31:56","START_DAY"],["2026-08-28T12:27:35","START_EAT"],["2026-08-28T12:51:35","STOP_EAT"],["2026-08-28T16:01:13","STOP_DAY"],["2026-08-31T07:48:47","START_DAY"],["2026-08-31T12:15:05","START_EAT"],["2026-08-31T12:38:37","STOP_EAT"],["2026-08-31T16:52:24","STOP_DAY"],["2026-09-01T07:25:13","START_DAY"],["2026-09-01T12:00:00","START_EAT"],["2026-09-01T13:00:00","STOP_EAT"],["2026-09-01T18:51:14","STOP_DAY"],["2026-09-02T08:14:36","START_DAY"],["2026-09-02T12:33:38","START_EAT"],["2026-09-02T12:55:57","STOP_EAT"],["2026-09-02T16:06:31","STOP_DAY"],["2026-09-03T07:47:30","START_DAY"],["2026-09-03T12:06:36","START_EAT"],["2026-09-03T12:32:43","STOP_EAT"],["2026-09-03T16:27:25","STOP_DAY"],["2026-09-04T07:35:52","START_DAY"],["2026-09-04T13:12:37","START_EAT"],["2026-09-04T13:40:28","STOP_EAT"],["2026-09-04T15:23:24","STOP_DAY"],["2026-09-07T07:36:20","START_DAY"],["2026-09-07T12:10:46","START_EAT"],["2026-09-07T12:36:46","STOP_EAT"],["2026-09-07T16:39:16","STOP_DAY"],["2026-09-08T07:37:44","START_DAY"],["2026-09-08T12:03:28","START_EAT"],["2026-09-08T12:33:27","STOP_EAT"],["2026-09-08T16:18:40","STOP_DAY"],["2026-09-09T07:34:22","START_DAY"],["2026-09-09T12:01:56","START_EAT"],["2026-09-09T12:29:56","STOP_EAT"],["2026-09-09T16:15:33","STOP_DAY"],["2026-09-10T07:30:31","START_DAY"],["2026-09-10T12:23:36","START_EAT"],["2026-09-10T12:53:04","STOP_EAT"],["2026-09-10T16:18:47","STOP_DAY"],["2026-09-11T07:29:20","START_DAY"],["2026-09-11T12:20:15","START_EAT"],["2026-09-11T12:50:16","STOP_EAT"],["2026-09-11T15:48:27","STOP_DAY"],["2026-09-14T07:35:09","START_DAY"],["2026-09-14T12:11:16","START_EAT"],["2026-09-14T12:41:16","STOP_EAT"],["2026-09-14T16:13:00","STOP_DAY"],["2026-09-15T07:36:28","START_DAY"],["2026-09-15T12:23:43","START_EAT"],["2026-09-15T12:38:43","STOP_EAT"],["2026-09-15T16:46:47","STOP_DAY"],["2026-09-16T07:25:28","START_DAY"],["2026-09-16T12:04:13","START_EAT"],["2026-09-16T12:24:43","STOP_EAT"],["2026-09-16T17:15:07","STOP_DAY"],["2026-09-21T07:28:15","START_DAY"],["2026-09-21T12:20:00","START_EAT"],["2026-09-21T12:40:00","STOP_EAT"],["2026-09-21T16:36:31","STOP_DAY"],["2026-09-22T07:39:07","START_DAY"],["2026-09-22T12:00:00","START_EAT"],["2026-09-22T12:30:00","STOP_EAT"],["2026-09-22T17:32:58","STOP_DAY"],["2026-09-23T07:35:00","START_DAY"],["2026-09-23T12:06:09","START_EAT"],["2026-09-23T12:36:09","STOP_EAT"],["2026-09-23T16:36:13","STOP_DAY"],["2026-09-24T07:31:04","START_DAY"],["2026-09-24T12:36:26","START_EAT"],["2026-09-24T13:02:15","STOP_EAT"],["2026-09-24T14:55:02","STOP_DAY"],["2026-09-25T07:33:32","START_DAY"],["2026-09-25T12:17:37","START_EAT"],["2026-09-25T12:47:38","STOP_EAT"],["2026-09-25T16:23:42","STOP_DAY"],["2026-09-28T07:31:38","START_DAY"],["2026-09-28T12:02:11","START_EAT"],["2026-09-28T12:36:14","STOP_EAT"],["2026-09-28T16:19:09","STOP_DAY"],["2026-09-29T07:38:33","START_DAY"],["2026-09-29T12:17:40","START_EAT"],["2026-09-29T12:45:49","STOP_EAT"],["2026-09-29T16:38:22","STOP_DAY"],["2026-09-30T07:23:23","START_DAY"],["2026-09-30T12:23:42","START_EAT"],["2026-09-30T12:47:52","STOP_EAT"],["2026-09-30T16:16:44","STOP_DAY"],["2026-10-01T07:35:25","START_DAY"],["2026-10-01T12:12:26","START_EAT"],["2026-10-01T12:47:00","STOP_EAT"],["2026-10-01T16:13:24","STOP_DAY"],["2026-10-02T07:32:41","START_DAY"],["2026-10-02T12:00:16","START_EAT"],["2026-10-02T12:31:49","STOP_EAT"],["2026-10-02T15:54:20","STOP_DAY"],["2026-10-07T07:41:14","START_DAY"]];
+const SEED = [];
 const KEY = "pointage.v1";
 const DAY_T = ["START_DAY","START_EAT","STOP_EAT","STOP_DAY"];
 const GARDE_T = ["START_GARDE","STOP_GARDE"];
@@ -640,7 +646,6 @@ document.getElementById("set-target").onchange=e=>{ const [h,m]=e.target.value.s
 document.getElementById("set-abs").onchange=e=>{ const [h,m]=e.target.value.split(":").map(Number); if(!isNaN(h)){ db.settings.absence=h*60+(m||0); save(); toast("Valeur d'absence enregistrée."); } };
 document.getElementById("set-pause").onchange=e=>{ const v=Math.max(0,Math.min(120,parseInt(e.target.value)||0)); db.settings.pause=v; save(); toast("Pause par défaut enregistrée."); };
 document.getElementById("set-theme").onchange=e=>{ db.settings.theme=e.target.value; save(); applyTheme(); };
-document.getElementById("d-seed").onclick=()=>{ const r=merge(SEED,{}); toast(r.added ? `${r.added} pointages repris de l'Excel.` : "Ces données sont déjà présentes."); };
 document.getElementById("d-import").onclick=()=>importText(document.getElementById("d-in").value);
 document.getElementById("d-file").onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>importText(String(r.result)); r.readAsText(f); e.target.value=""; };
 document.getElementById("d-exp-tsv").onclick=()=>showOut(exportTSV());
@@ -750,6 +755,18 @@ if(gh.pending) ghSync(false);
 setInterval(()=>{ if(view==="today" && !openK) renderToday(); }, 20000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ render(); if(gh.pending) ghSync(false); } });
 window.addEventListener("online",()=>{ if(gh.pending) ghSync(false); });
+if("serviceWorker" in navigator && location.protocol==="https:" && !location.hostname.endsWith("claude.ai")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+<script>
+(function(){
+  var b=document.getElementById("crabHome"), from=false;
+  try{ from = sessionStorage.getItem("crablab.return")==="1"; }catch(e){}
+  try{ if(!from && document.referrer){ var r=new URL(document.referrer); from = r.origin===location.origin && (r.pathname==="/" || r.pathname==="/index.html"); } }catch(e){}
+  if(from){ try{ sessionStorage.setItem("crablab.return","1"); }catch(e){} b.hidden=false; }
+  b.onclick=function(){ location.href="/"; };
+})();
 </script>
 </body>
 </html>
